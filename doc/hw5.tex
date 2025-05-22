@@ -170,21 +170,74 @@
 \end{enumerate}
 
 \subsection{稳定性条件}
-\begin{itemize}
-    \item \textbf{CFL条件}：
+\textbf{CFL条件}：
     \begin{equation}
     \Delta t < \min\left( \frac{\Delta x}{|u|_{\max}}, \frac{\Delta y}{|v|_{\max}}, \frac{\Delta x^2}{4\nu}, \frac{\Delta y^2}{4\nu} \right)
     \label{eq:cfl}
     \end{equation}
-    
-    \item \textbf{网格独立性验证}：比较$64\times64$与$128\times128$网格的主涡涡心位置差异小于$1\%$
-\end{itemize}
 
 
+\newpage
 \section{代码生成与调试}
 
+\subsection{代码结构与模块说明}
+程序采用模块化设计，核心文件如下：
 
-\section{结果讨论和物理解释}
+\begin{itemize}
+    \item \texttt{param.py}：定义仿真参数类，管理网格分辨率（\texttt{N=101}）、运动粘度（$\nu=0.001$）、时间步长（\texttt{dt=1e-4}）等参数
+    \begin{lstlisting}[language=Python]
+@dataclass
+class SimulationParameters:
+    N: int = 101     # 网格点数
+    nu: float = 0.001 # 运动粘度
+    dt: float = 1e-4  # 时间步长
+    \end{lstlisting}
+
+    \item \texttt{func.py}：实现核心算法函数，包含流场初始化、边界条件处理等
+    \item \texttt{main.py}：主控程序，管理仿真循环和结果输出
+\end{itemize}
+
+\subsection{算法流程实现}
+基于投影法的求解流程如下：
+\begin{enumerate}
+    \item \textbf{流场初始化}：设置顶部边界速度分布
+    \begin{lstlisting}[language=Python]
+u_top = np.sin(np.pi * x)**2  # 满足角点导数为零
+u[:, -1] = u_top  # 应用顶部边界条件
+    \end{lstlisting}
+
+    \item \textbf{速度预测}：显式求解动量方程
+    \begin{lstlisting}[language=Python]
+u[1:-1,1:-1] += dt * (nu*拉普拉斯项 - 对流项)
+    \end{lstlisting}
+
+    \item \textbf{压力修正}：迭代求解泊松方程（Jacobi方法）
+    \begin{lstlisting}[language=Python]
+for p_iter in range(max_p_iter):
+    p[1:-1,1:-1] = (邻点压力平均 - h²/(4dt)*速度散度)/4
+    \end{lstlisting}
+
+    \item \textbf{收敛检查}：每100次迭代检测速度变化
+    \begin{lstlisting}[language=Python]
+if np.max(u - prev_u) < 1e-7 and np.max(v - prev_v) < 1e-7:
+    break  # 终止条件
+    \end{lstlisting}
+\end{enumerate}
+
+
+\subsection{版本控制记录}
+Github 版本控制记录如下：
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{c1.png}
+    \caption{git提交记录}
+    \label{fig:commit}
+\end{figure}
+
+
+
+
+
 
 
 
@@ -200,10 +253,9 @@
         hw4.tex & 60\% & 调整pdf格式，调用宏包，省略插入图片和代码的重复性工作 \\ 
         .gitignore & 100\% & 针对于python和latex的.gitignore文件，完全由Copilot生成  \\
         ReadMe & 80\% & 介绍文件，从上次作业继承，结合AI修改 \\
-        common.py & 30\% & 主要迭代和划分网格自己实现，部分绘图代码AI生成  \\
-        task1.py & 0\% & 自己实现 \\
-        task2.py & 0\% & 自己实现 \\
-        task3.py & 0\% & 自己实现 \\
+        main.py & 0\% & 自己实现  \\
+        func.py & 20\% & 部分绘图代码使用 AI 生成 \\
+        param.py & 0\% & 自己实现 \\
         \hline
     \end{tabular}
     \label{tab:AI_tools}
