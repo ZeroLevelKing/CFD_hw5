@@ -1,99 +1,91 @@
 import numpy as np
+from scipy.ndimage import gaussian_filter
 
-def initialize_grid(N):
-    """初始化交错网格"""
-    # 速度场存储位置 (u: Nx+1 × Ny, v: Nx × Ny+1)
-    u = np.zeros((N+1, N))    # 水平速度 (i+1/2,j)
-    v = np.zeros((N, N+1))    # 垂直速度 (i,j+1/2)
-    p = np.zeros((N, N))      # 压力 (i,j)
+def initialize_fields(N):
+    """初始化场变量（非交错网格版）"""
+    u = np.zeros((N, N))
+    v = np.zeros((N, N))
+    p = np.zeros((N, N))
+    
+    # 设置上边界条件
+    x = np.linspace(0, 1, N)
+    u[:, -1] = np.sin(np.pi * x)**2  # 修正后的边界条件
     return u, v, p
 
-def apply_velocity_bc(u, v, dx, N):
-    """应用速度边界条件"""
-    # 上边界: u = sin²(πx), v=0
-    for i in range(N):
-        x = (i + 0.5) * dx
-        u[i, -1] = np.sin(np.pi * x)**2  # 上边界u位于第N层
-    v[:, -1] = 0.0
+def apply_velocity_bc(u, v):
+    """应用速度边界条件（非交错网格版）"""
+    # 上边界
+    u[:, -1] = u[:, -2]  # 无滑移修正
+    v[:, -1] = 0
     
-    # 左/右/下边界: u=0, v=0
-    u[0, :] = 0.0       # 左边界
-    u[-1, :] = 0.0      # 右边界
-    v[:, 0] = 0.0       # 下边界
+    # 其他边界
+    u[0, :] = u[-1, :] = 0  # 左右
+    v[:, 0] = 0             # 下边界
     return u, v
 
-def compute_convection(u, v, dx, N):
-    """计算u和v的对流项（二阶迎风）"""
-    # 水平速度u的对流项
-    conv_u = np.zeros_like(u)
-    for i in range(1, N):
-        for j in range(1, N-1):
-            u_face = 0.5*(u[i,j] + u[i+1,j])  # 面心速度
-            v_face = 0.5*(v[i,j] + v[i+1,j])
-            # x方向对流
-            if u_face > 0:
-                dudx = (u[i,j] - u[i-1,j])/dx
-            else:
-                dudx = (u[i+1,j] - u[i,j])/dx
-            # y方向对流
-            if v_face > 0:
-                dudy = (u[i,j] - u[i,j-1])/dx
-            else:
-                dudy = (u[i,j+1] - u[i,j])/dx
-            conv_u[i,j] = u_face*dudx + v_face*dudy
+def compute_convection_diffusion(u, v, nu, h, dt):
+    """计算对流-扩散项（中心差分）"""
+    u_new = u.copy()
+    v_new = v.copy()
     
-    # 垂直速度v的对流项
-    conv_v = np.zeros_like(v)
-    for i in range(1, N-1):
-        for j in range(1, N):
-            u_face = 0.5*(u[i,j] + u[i,j+1])
-            v_face = 0.5*(v[i,j] + v[i,j-1])
-            # x方向对流
-            if u_face > 0:
-                dvdx = (v[i,j] - v[i-1,j])/dx
-            else:
-                dvdx = (v[i+1,j] - v[i,j])/dx
-            # y方向对流
-            if v_face > 0:
-                dvdy = (v[i,j] - v[i,j-1])/dx
-            else:
-                dvdy = (v[i,j+1] - v[i,j])/dx
-            conv_v[i,j] = u_face*dvdx + v_face*dvdy
+    # 水平动量方程
+    u_new[1:-1,1:-1] += dt * (
+        nu*(u[2:,1:-1] + u[:-2,1:-1] + u[1:-1,2:] + u[1:-1,:-2] -4*u[1:-1,1:-1])/h**2
+        - u[1:-1,1:-1]*(u[2:,1:-1]-u[:-2,1:-1])/(2*h)
+        - v[1:-1,1:-1]*(u[1:-1,2:]-u[1:-1,:-2])/(2*h)
+    )
     
-    return conv_u, conv_v
+    # 垂直动量方程
+    v_new[1:-1,1:-1] += dt * (
+        nu*(v[2:,1:-1] + v[:-2,1:-1] + v[1:-1,2:] + v[1:-1,:-2] -4*v[1:-1,1:-1])/h**2 
+        - u[1:-1,1:-1]*(v[2:,1:-1]-v[:-2,1:-1])/(2*h)
+        - v[1:-1,1:-1]*(v[1:-1,2:]-v[1:-1,:-2])/(2*h)
+    )
+    
+    return u_new, v_new
 
-def laplacian(u, v, dx):
-    """同时计算u和v的拉普拉斯项"""
-    laplacian_u = (np.roll(u, -1, axis=0) - 2*u + np.roll(u, 1, axis=0)) / dx**2 \
-                + (np.roll(u, -1, axis=1) - 2*u + np.roll(u, 1, axis=1)) / dx**2
-    laplacian_v = (np.roll(v, -1, axis=0) - 2*v + np.roll(v, 1, axis=0)) / dx**2 \
-                + (np.roll(v, -1, axis=1) - 2*v + np.roll(v, 1, axis=1)) / dx**2
-    return laplacian_u, laplacian_v
-
-def pressure_poisson(p, u, v, dx, dt, N, max_iter=1000, tol=1e-5):
-    """SOR求解压力泊松方程"""
-    beta = 1.7
+def solve_pressure(u, v, p, h, dt, max_iter=1000, tol=1e-5):
+    """压力泊松方程求解器（带残差监控）"""
     for _ in range(max_iter):
         p_old = p.copy()
-        for i in range(1, N-1):
-            for j in range(1, N-1):
-                div = (u[i+1,j] - u[i,j] + v[i,j+1] - v[i,j]) / dx
-                p[i,j] = (1-beta)*p[i,j] + beta*0.25*(p[i+1,j] + p[i-1,j] + p[i,j+1] + p[i,j-1] - dx**2 * div / dt)
-        # 压力Neumann边界（∂p/∂n=0）
-        p[:, 0] = p[:, 1]     # 下边界
-        p[:, -1] = p[:, -2]   # 上边界
-        p[0, :] = p[1, :]     # 左边界
-        p[-1, :] = p[-2, :]   # 右边界
-        if np.max(np.abs(p - p_old)) < tol:
+        
+        # 离散压力方程
+        p[1:-1,1:-1] = 0.25*(p[2:,1:-1]+p[:-2,1:-1]+p[1:-1,2:]+p[1:-1,:-2] 
+                           - h**2/(4*dt)*(
+                               (u[2:,1:-1]-u[:-2,1:-1])/(2*h) + 
+                               (v[1:-1,2:]-v[1:-1,:-2])/(2*h)
+                           ))
+        
+        # Neumann边界条件
+        p = apply_pressure_bc(p)
+        
+        # 检查收敛性
+        residual = np.max(np.abs(p - p_old))
+        if residual < tol:
             break
     return p
 
-def project(u_star, v_star, p, dx, dt):
-    """速度修正"""
-    u = u_star.copy()
-    v = v_star.copy()
-    # 水平速度修正
-    u[1:-1, 1:-1] -= dt * (p[1:, 1:-1] - p[:-1, 1:-1]) / dx
-    # 垂直速度修正
-    v[1:-1, 1:-1] -= dt * (p[1:-1, 1:] - p[1:-1, :-1]) / dx
-    return u, v
+def apply_pressure_bc(p):
+    """压力场边界条件"""
+    p[0, :] = p[1, :]     # 左
+    p[-1, :] = p[-2, :]   # 右
+    p[:, 0] = p[:, 1]     # 下
+    p[:, -1] = p[:, -2]   # 上
+    return p
+
+def compute_streamfunction(u, v, h):
+    """流函数计算（您的特征值分析部分）"""
+    # 计算涡量ω = dv/dx - du/dy
+    omega = np.zeros_like(u)
+    omega[1:-1,1:-1] = (v[1:-1,2:] - v[1:-1,:-2])/(2*h) - (u[2:,1:-1] - u[:-2,1:-1])/(2*h)
+    omega = gaussian_filter(omega, sigma=1)  # 平滑处理
+    
+    # 迭代求解ψ
+    psi = np.zeros_like(u)
+    for _ in range(10000):
+        psi_old = psi.copy()
+        psi[1:-1,1:-1] = 0.25*(psi[2:,1:-1]+psi[:-2,1:-1]+psi[1:-1,2:]+psi[1:-1,:-2] 
+                              + h**2*omega[1:-1,1:-1])
+        if np.max(np.abs(psi - psi_old)) < 1e-6:
+            break
+    return psi
