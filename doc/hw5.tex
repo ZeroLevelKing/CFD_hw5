@@ -2,13 +2,15 @@
 \usepackage{listings}
 \usepackage{booktabs}  
 \usepackage{geometry}  
-\usepackage{hyperref}
 \usepackage{graphicx} 
 \usepackage{xcolor}
 \usepackage{float}
 \usepackage{array}
 \usepackage{enumitem}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,bm}
+\usepackage[colorlinks=true]{hyperref}
+\usepackage[version=4]{mhchem}
+\usepackage{siunitx}
 \graphicspath{{figure/}} % 指定放置图片的子文件夹路径
 \geometry{a4paper, left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
 
@@ -38,8 +40,145 @@
 
 
 \section{数理算法原理}
+\subsection{控制方程与数学模型}
+不可压缩流动由Navier-Stokes方程和连续性方程描述：
 
+\textbf{动量方程}：
+\begin{equation}
+\frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u} \cdot \nabla) \mathbf{u} = -\nabla p + \nu \nabla^2 \mathbf{u}
+\label{eq:momentum}
+\end{equation}
 
+\textbf{连续性方程}：
+\begin{equation}
+\nabla \cdot \mathbf{u} = 0
+\label{eq:continuity}
+\end{equation}
+其中$\mathbf{u} = (u, v)$为速度场，$p$为压力，$\nu = 0.001$为运动粘度。
+
+\subsection{数值离散方法}
+\subsubsection{投影法（Projection Method）}
+采用分步投影法分离速度与压力的耦合：
+\begin{enumerate}
+    \item \textbf{预测步}：求解中间速度$\mathbf{u}^*$（隐式处理粘性项）：
+    \begin{equation}
+    \frac{\mathbf{u}^* - \mathbf{u}^n}{\Delta t} = -\left(\mathbf{u}^n \cdot \nabla\right)\mathbf{u}^n + \frac{\nu}{2} \left( \nabla^2 \mathbf{u}^n + \nabla^2 \mathbf{u}^* \right)
+    \label{eq:predictor}
+    \end{equation}
+    
+    \item \textbf{压力修正}：通过泊松方程求解压力场：
+    \begin{equation}
+    \nabla^2 p^{n+1} = \frac{\nabla \cdot \mathbf{u}^*}{\Delta t}
+    \label{eq:poisson}
+    \end{equation}
+    
+    \item \textbf{速度修正}：更新速度场满足不可压缩条件：
+    \begin{equation}
+    \mathbf{u}^{n+1} = \mathbf{u}^* - \Delta t \nabla p^{n+1}
+    \label{eq:corrector}
+    \end{equation}
+\end{enumerate}
+
+\subsubsection{空间离散}
+\textbf{交错网格（MAC网格）}：
+\begin{itemize}
+    \item 水平速度$u_{i+1/2,j}$位于单元右面中心
+    \item 垂直速度$v_{i,j+1/2}$位于单元顶面中心
+    \item 压力$p_{i,j}$位于单元中心
+\end{itemize}
+
+\textbf{对流项离散}（以$x$方向为例）：
+\begin{equation}
+(\mathbf{u} \cdot \nabla u)_{i+1/2,j} \approx \frac{u_{i+1,j}^2 - u_{i,j}^2}{\Delta x} + \frac{(uv)_{i+1/2,j+1/2} - (uv)_{i+1/2,j-1/2}}{\Delta y}
+\label{eq:convection}
+\end{equation}
+
+\textbf{扩散项离散}：
+\begin{equation}
+\nabla^2 u_{i+1/2,j} \approx \frac{u_{i+3/2,j} - 2u_{i+1/2,j} + u_{i-1/2,j}}{\Delta x^2} + \frac{u_{i+1/2,j+1} - 2u_{i+1/2,j} + u_{i+1/2,j-1}}{\Delta y^2}
+\label{eq:diffusion}
+\end{equation}
+
+\subsubsection{时间离散}
+\begin{itemize}
+    \item 对流项：显式Adams-Bashforth格式
+    \begin{equation}
+    (\mathbf{u} \cdot \nabla \mathbf{u})^{n} \approx \frac{3}{2}(\mathbf{u} \cdot \nabla \mathbf{u})^{n} - \frac{1}{2}(\mathbf{u} \cdot \nabla \mathbf{u})^{n-1}
+    \label{eq:adams}
+    \end{equation}
+    
+    \item 粘性项：隐式Crank-Nicolson格式
+    \begin{equation}
+    \nabla^2 \mathbf{u}^{n+1/2} \approx \frac{1}{2} \left( \nabla^2 \mathbf{u}^n + \nabla^2 \mathbf{u}^{n+1} \right)
+    \label{eq:crank}
+    \end{equation}
+\end{itemize}
+
+\subsection{边界条件处理}
+\subsubsection{速度边界}
+\begin{itemize}
+    \item \textbf{上边界}：
+    \begin{align}
+    u_{i+1/2,N} &= \sin^2\left(\pi \cdot \left(i+\frac{1}{2}\right)\Delta x\right) \\
+    v_{i,N+1/2} &= 0 \quad (\text{无垂直流动})
+    \end{align}
+    
+    \item \textbf{左/右/下边界}：
+    \begin{align}
+    u_{1/2,j} = u_{N+1/2,j} &= 0 \\
+    v_{i,1/2} &= 0
+    \end{align}
+\end{itemize}
+
+\subsubsection{压力边界}
+\begin{itemize}
+    \item 固壁边界：
+    \begin{equation}
+    \left.\frac{\partial p}{\partial n}\right|_{\text{固壁}} = 0
+    \end{equation}
+    
+    \item 压力泊松方程全局约束：
+    \begin{equation}
+    \int_{\Omega} p \, d\Omega = 0
+    \end{equation}
+\end{itemize}
+
+\subsection{流函数与涡量计算}
+\subsubsection{流函数$\psi$}
+通过求解泊松方程获得：
+\begin{equation}
+\nabla^2 \psi = -\omega, \quad \omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}
+\label{eq:streamfunction}
+\end{equation}
+
+\subsubsection{涡量离散}（适配交错网格）：
+\begin{equation}
+\omega_{i,j} = \frac{v_{i+1/2,j} - v_{i-1/2,j}}{\Delta x} - \frac{u_{i,j+1/2} - u_{i,j-1/2}}{\Delta y}
+\label{eq:vorticity}
+\end{equation}
+
+\subsection{算法流程}
+\begin{enumerate}
+    \item 初始化速度场$\mathbf{u}^0 = 0$，压力场$p^0 = 0$
+    \item 时间迭代（$n = 0,1,2,\dots$）：
+    \begin{itemize}
+        \item 预测中间速度$\mathbf{u}^*$（式\ref{eq:predictor}）
+        \item 使用SOR方法（残差阈值$10^{-5}$）求解压力泊松方程（式\ref{eq:poisson}）
+        \item 更新速度场（式\ref{eq:corrector}）
+    \end{itemize}
+    \item 收敛判断：$\max|\mathbf{u}^{n+1} - \mathbf{u}^n| < \epsilon$（$\epsilon = 10^{-6}$）
+\end{enumerate}
+
+\subsection{稳定性条件}
+\begin{itemize}
+    \item \textbf{CFL条件}：
+    \begin{equation}
+    \Delta t < \min\left( \frac{\Delta x}{|u|_{\max}}, \frac{\Delta y}{|v|_{\max}}, \frac{\Delta x^2}{4\nu}, \frac{\Delta y^2}{4\nu} \right)
+    \label{eq:cfl}
+    \end{equation}
+    
+    \item \textbf{网格独立性验证}：比较$64\times64$与$128\times128$网格的主涡涡心位置差异小于$1\%$
+\end{itemize}
 
 
 \section{代码生成与调试}
