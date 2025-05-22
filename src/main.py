@@ -24,6 +24,10 @@ def main():
     
     # Main simulation loop
     for iter in range(params.max_iter):
+        # Count iterations
+        if iter % 1000 == 0:
+            print(f"Iteration {iter}/{params.max_iter}")
+            
         # Store previous velocities for convergence check
         if iter % params.check_interval == 0:
             prev_u[:], prev_v[:] = u, v
