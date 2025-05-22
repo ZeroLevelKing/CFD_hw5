@@ -1,0 +1,72 @@
+\documentclass[UTF8]{ctexart}
+\usepackage{listings}
+\usepackage{booktabs}  
+\usepackage{geometry}  
+\usepackage{hyperref}
+\usepackage{graphicx} 
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\graphicspath{{figure/}} % 指定放置图片的子文件夹路径
+\geometry{a4paper, left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{codegreen},
+    stringstyle=\color{codepurple},
+    showstringspaces=false
+}
+
+
+\begin{document}
+
+\title{计算流体力学第五次作业}
+\author{朱林-2200011028}
+\date{\today}
+\maketitle
+
+
+\section{数理算法原理}
+
+
+
+
+\section{代码生成与调试}
+
+
+\section{结果讨论和物理解释}
+
+
+
+%附录
+\newpage
+\appendix
+\section{AI工具使用声明表}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c|c|c}
+        \hline
+        使用内容 & 使用比例 & 使用目的 \\ \hline
+        hw4.tex & 60\% & 调整pdf格式，调用宏包，省略插入图片和代码的重复性工作 \\ 
+        .gitignore & 100\% & 针对于python和latex的.gitignore文件，完全由Copilot生成  \\
+        ReadMe & 80\% & 介绍文件，从上次作业继承，结合AI修改 \\
+        common.py & 30\% & 主要迭代和划分网格自己实现，部分绘图代码AI生成  \\
+        task1.py & 0\% & 自己实现 \\
+        task2.py & 0\% & 自己实现 \\
+        task3.py & 0\% & 自己实现 \\
+        \hline
+    \end{tabular}
+    \label{tab:AI_tools}
+\end{table}
+\end{document}

@@ -172,3 +172,71 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# LaTeX 临时文件
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+*.thm
+*.xdv
+*.run.xml
+
+# 备份文件
+*.backup
+*.bak
+*~
+*.swp
+*.swo
+
+# 编译输出（按需取消注释不需要的格式）
+#*.dvi
+#*.ps
+#*.eps
+
+# 构建工具
+latexmk/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 注释掉的文件包（按需取消注释）
+# packages/*.sty
+# packages/*.cls
+
+# 其他工具临时文件
+*.bib~
+*.tex~
+
+# JetBrains 全系列 IDE 配置（IntelliJ/PyCharm/WebStorm等）
++.idea/
++*.iml
++*.iws
++*.ipr
++*.idea_modules/
++/.idea/workspace.xml
++/.idea/modules.xml
++/.idea/tasks.xml
+
++# PyCharm 特定缓存（可选添加）
++__pycache__/
++.pyc
+
++# VS Code 配置
++.vscode/
++*.code-workspace
++*.vscode/*
++!.vscode/settings.json.example  # 可选：保留示例配置文件
++*.code-profile
++/sftp.json                      # 忽略SFTP插件配置
