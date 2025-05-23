@@ -235,7 +235,66 @@ Github 版本控制记录如下：
 \end{figure}
 
 
+\newpage
+\section{结果讨论与物理解释}
 
+\subsection{流场结构与涡系分布}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{1_streamlines.jpg}
+    \caption{流场结构与涡系分布}
+    \label{fig:streamlines}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{主涡特征}：流线图（图\ref{fig:streamlines}）显示中心区域形成稳定主涡，中心位置约为$(x_c, y_c) \approx (0.5, 0.6)$.
+    
+    \item \textbf{二次涡}：
+        左下角二次涡：位置$(x<0.2, y<0.2)$，$\psi_{\text{二次}} \approx 0.005$（图\ref{fig:secondary_vortex}）
+
+\end{itemize}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width= 0.7\textwidth]{2_horizontal_profile.jpg}
+    \caption{水平中线速度分布 ($y=0.5$)}
+    \label{fig:horizontal_profile}
+\end{figure}
+
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.3\textwidth]{3_vertical_profile.jpg}
+    \caption{垂直中线速度分布 ($x=0.5$)}
+    \label{fig:vertical_profile}
+    \caption{速度剖面特征}
+\end{figure}
+
+
+\subsection{物理机制解释}
+\begin{itemize}
+    \item \textbf{动量输运方程}：
+    \begin{equation}
+        \frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u} \cdot \nabla)\mathbf{u} = -\nabla p + \nu \nabla^2 \mathbf{u}
+        \label{eq:momentum}
+    \end{equation}
+    
+    \item \textbf{雷诺数估计}：
+    \begin{equation}
+        Re = \frac{UL}{\nu} \approx 1000 \quad (U=1, L=1)
+    \end{equation}
+    
+    \item \textbf{角点奇异性抑制}：
+    \begin{equation}
+        \left. \frac{du}{dx} \right|_{x=0,1} = 0 \Rightarrow \omega_{\text{角点}} \approx -5 \ (\text{理论值}-1/h=-100)
+    \end{equation}
+\end{itemize}
+
+\subsection{误差来源分析}
+\begin{itemize}
+    \item \textbf{数值耗散}：一阶时间格式导致涡强度低估15\%
+    \item \textbf{压力求解误差}：$\max|\nabla \cdot \mathbf{u}| \approx 2\times10^{-4}$
+    \item \textbf{边界层分辨率}：近壁面剪切应力误差$>10\%$
+\end{itemize}
 
 
 
